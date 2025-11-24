@@ -11,8 +11,6 @@ import Combine
 
 // Mensagens trocadas entre os dispositivos
 enum GameMessage: Codable {
-    case buttonPressed(playerID: String, playerName: String)
-    case buttonReleased(playerID: String, playerName: String)
     case playerConnected(playerID: String, playerName: String)
     case playerReady(playerID: String, playerName: String, isReady: Bool)
     case startGame
@@ -155,14 +153,6 @@ class MultiPeerManager: NSObject, ObservableObject {
         }
     }
     
-    func sendButtonPressed() {
-        sendMessage(.buttonPressed(playerID: playerID, playerName: playerName))
-    }
-    
-    func sendButtonReleased() {
-        sendMessage(.buttonReleased(playerID: playerID, playerName: playerName))
-    }
-    
     func sendReadyStatus(_ isReady: Bool) {
         // Atualiza estado local
         if isReady {
@@ -193,7 +183,6 @@ class MultiPeerManager: NSObject, ObservableObject {
     }
     
     func sendMove(direction: String) {
-        print("📤 Enviando movimento - playerID: '\(playerID)' - playerName: '\(playerName)' - direction: '\(direction)'")
         sendMessage(.playerMove(playerID: playerID, playerName: playerName, direction: direction))
     }
     
@@ -397,13 +386,8 @@ extension MultiPeerManager: MCSessionDelegate {
                         }
                     }
                     
-                    print("📥 Recebeu movimento")
-                    print("   playerID (UUID): '\(playerID)'")
-                    print("   playerName: '\(playerName)'")
-                    print("   direction: '\(direction)'")
                     self.receivedMessages.append("\(playerName) - \(direction)")
                     self.addPlayerMessage(playerID: playerID, playerName: playerName, message: direction)
-                    print("\(playerName) moved \(direction)")
                     
                 case .updateTotalPlayers(let count):
                     self.totalPlayers = count

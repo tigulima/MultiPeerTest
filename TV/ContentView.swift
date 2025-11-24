@@ -96,7 +96,6 @@ struct ContentView: View {
                                     let _ = print("📋 Keys disponíveis: \(Array(multiPeer.playerMessages.keys))")
                                     
                                     if let messages = multiPeer.playerMessages[peer.displayName], !messages.isEmpty {
-                                        let _ = print("✅ Encontrou \(messages.count) mensagens para '\(peer.displayName)'")
                                         ForEach(Array(messages.suffix(15).enumerated()), id: \.offset) { msgIndex, message in
                                             Text(message)
                                                 .font(.system(size: 18, weight: .medium))

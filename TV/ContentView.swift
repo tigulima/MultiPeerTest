@@ -66,6 +66,7 @@ struct ContentView: View {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(Array(multiPeer.connectedPeers.enumerated()), id: \.element) { index, peer in
                         let playerColor = getPlayerColor(for: index)
+                        let _ = print("🎮 === Renderizando coluna para peer [\(index)]: '\(peer.displayName)' ===")
                         
                         VStack(spacing: 15) {
                             // Nome do jogador
@@ -83,7 +84,11 @@ struct ContentView: View {
                             // Logs do jogador
                             ScrollView {
                                 VStack(alignment: .leading, spacing: 10) {
+                                    let _ = print("🔍 Buscando mensagens para peer: '\(peer.displayName)'")
+                                    let _ = print("📋 Keys disponíveis: \(Array(multiPeer.playerMessages.keys))")
+                                    
                                     if let messages = multiPeer.playerMessages[peer.displayName], !messages.isEmpty {
+                                        let _ = print("✅ Encontrou \(messages.count) mensagens para '\(peer.displayName)'")
                                         ForEach(Array(messages.suffix(15).enumerated()), id: \.offset) { msgIndex, message in
                                             Text(message)
                                                 .font(.system(size: 18, weight: .medium))
@@ -97,6 +102,7 @@ struct ContentView: View {
                                                 )
                                         }
                                     } else {
+                                        let _ = print("❌ Nenhuma mensagem para '\(peer.displayName)'")
                                         Text("Sem atividade")
                                             .font(.callout)
                                             .foregroundColor(.white.opacity(0.5))

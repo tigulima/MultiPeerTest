@@ -11,15 +11,15 @@ import Combine
 
 // Mensagens trocadas entre os dispositivos
 enum GameMessage: Codable {
-    case buttonPressed(playerID: String)
-    case buttonReleased(playerID: String)
-    case playerConnected(playerID: String)
-    case playerReady(playerID: String, isReady: Bool)
+    case buttonPressed(playerID: String, playerName: String)
+    case buttonReleased(playerID: String, playerName: String)
+    case playerConnected(playerID: String, playerName: String)
+    case playerReady(playerID: String, playerName: String, isReady: Bool)
     case startGame
-    case playerClick(playerID: String)
+    case playerClick(playerID: String, playerName: String)
     case updateTotalPlayers(count: Int)
     case updateReadyPlayers(players: [String])
-    case playerMove(playerID: String, direction: String)
+    case playerMove(playerID: String, playerName: String, direction: String)
 }
 
 class MultiPeerManager: NSObject, ObservableObject {
@@ -42,13 +42,27 @@ class MultiPeerManager: NSObject, ObservableObject {
     @Published var finalClickCount = 0
     
     var playerID: String = ""
+    var playerName: String = ""
     private var readyPlayers: Set<String> = []
     private var totalPlayers = 1
+    
+    // Mapeamento de playerID (UUID) para nome do dispositivo
+    private var playerIDToName: [String: String] = [:]
+    
+    // Mapeamento de playerID (UUID) para peer displayName (para Apple TV)
+    // Isso garante que sempre usamos a chave correta
+    private var playerIDToPeerDisplayName: [String: String] = [:]
     
     // MARK: - Initialization
     
     override init() {
-        // Criar peerID com nome do dispositivo
+        // Gerar UUID único para este jogador
+        self.playerID = UUID().uuidString
+        
+        // Guardar o nome do dispositivo
+        self.playerName = UIDevice.current.name
+        
+        // Criar peerID com nome do dispositivo (para exibição na rede)
         self.peerID = MCPeerID(displayName: UIDevice.current.name)
         
         // Criar sessão
@@ -58,12 +72,17 @@ class MultiPeerManager: NSObject, ObservableObject {
             encryptionPreference: .none // Para menor latência
         )
         
-        // Configurar playerID com o nome do dispositivo
-        self.playerID = UIDevice.current.name
-        
         super.init()
         
         session.delegate = self
+        
+        // Registrar o próprio mapeamento
+        playerIDToName[playerID] = playerName
+        
+        print("🆔 MultiPeerManager inicializado")
+        print("   playerID (UUID): '\(playerID)'")
+        print("   playerName: '\(playerName)'")
+        print("   peerID.displayName: '\(peerID.displayName)'")
     }
     
     // MARK: - Host (Apple TV)
@@ -125,11 +144,11 @@ class MultiPeerManager: NSObject, ObservableObject {
     }
     
     func sendButtonPressed() {
-        sendMessage(.buttonPressed(playerID: playerID))
+        sendMessage(.buttonPressed(playerID: playerID, playerName: playerName))
     }
     
     func sendButtonReleased() {
-        sendMessage(.buttonReleased(playerID: playerID))
+        sendMessage(.buttonReleased(playerID: playerID, playerName: playerName))
     }
     
     func sendReadyStatus(_ isReady: Bool) {
@@ -144,7 +163,7 @@ class MultiPeerManager: NSObject, ObservableObject {
         updateAllPlayersReady()
         
         // Envia para a TV
-        sendMessage(.playerReady(playerID: playerID, isReady: isReady))
+        sendMessage(.playerReady(playerID: playerID, playerName: playerName, isReady: isReady))
     }
     
     private func updateAllPlayersReady() {
@@ -158,11 +177,12 @@ class MultiPeerManager: NSObject, ObservableObject {
     }
     
     func sendClick() {
-        sendMessage(.playerClick(playerID: playerID))
+        sendMessage(.playerClick(playerID: playerID, playerName: playerName))
     }
     
     func sendMove(direction: String) {
-        sendMessage(.playerMove(playerID: playerID, direction: direction))
+        print("📤 Enviando movimento - playerID: '\(playerID)' - playerName: '\(playerName)' - direction: '\(direction)'")
+        sendMessage(.playerMove(playerID: playerID, playerName: playerName, direction: direction))
     }
     
     func resetLobby() {
@@ -171,14 +191,40 @@ class MultiPeerManager: NSObject, ObservableObject {
     }
     
     // Adicionar mensagem ao log do jogador específico
-    private func addPlayerMessage(playerID: String, message: String) {
-        if playerMessages[playerID] == nil {
-            playerMessages[playerID] = []
+    private func addPlayerMessage(playerID: String, playerName: String, message: String) {
+        print("📝 Adicionando mensagem")
+        print("   playerID (UUID): '\(playerID)'")
+        print("   playerName: '\(playerName)'")
+        print("   message: '\(message)'")
+        
+        // Usar o mapeamento direto UUID → displayName
+        let keyToUse: String
+        if let mappedDisplayName = playerIDToPeerDisplayName[playerID] {
+            keyToUse = mappedDisplayName
+            print("   ✅ Encontrou mapeamento: '\(playerID)' → '\(mappedDisplayName)'")
+        } else {
+            // Fallback: procurar pelo playerName
+            print("   ⚠️ Mapeamento não encontrado, usando playerName como chave")
+            keyToUse = playerName
         }
-        playerMessages[playerID]?.append(message)
+        
+        print("   🔑 Chave final: '\(keyToUse)'")
+        
+        // Usar a chave para exibição
+        if playerMessages[keyToUse] == nil {
+            playerMessages[keyToUse] = []
+            print("   🆕 Criou novo array para '\(keyToUse)'")
+        }
+        playerMessages[keyToUse]?.append(message)
+        
         // Manter apenas as últimas 20 mensagens por jogador
-        if let count = playerMessages[playerID]?.count, count > 20 {
-            playerMessages[playerID]?.removeFirst()
+        if let count = playerMessages[keyToUse]?.count, count > 20 {
+            playerMessages[keyToUse]?.removeFirst()
+        }
+        
+        print("📊 Estado atual playerMessages:")
+        for (key, msgs) in playerMessages {
+            print("      '\(key)': \(msgs.count) mensagens")
         }
     }
     
@@ -204,15 +250,25 @@ extension MultiPeerManager: MCSessionDelegate {
             
             switch state {
             case .connected:
-                print("Conectado: \(peerID.displayName)")
+                print("✅ Conectado: \(peerID.displayName)")
+                print("🔍 Meu playerID: '\(self.playerID)' - Peer conectado: '\(peerID.displayName)'")
                 self.receivedMessages.append("\(peerID.displayName) conectou!")
                 self.isConnecting = false
                 self.isSearching = false
                 self.connectionError = false
                 
+                // Inicializar entrada no dicionário de mensagens (se for host)
+                if self.isHosting && self.playerMessages[peerID.displayName] == nil {
+                    self.playerMessages[peerID.displayName] = []
+                    print("📦 Inicializou array de mensagens para '\(peerID.displayName)'")
+                }
+                
                 // Se for cliente (iPhone), avisar o servidor qual é o playerID
                 if !self.isHosting {
-                    self.sendMessage(.playerConnected(playerID: self.playerID))
+                    print("📨 Enviando playerConnected")
+                    print("   playerID (UUID): '\(self.playerID)'")
+                    print("   playerName: '\(self.playerName)'")
+                    self.sendMessage(.playerConnected(playerID: self.playerID, playerName: self.playerName))
                 }
                 
             case .connecting:
@@ -236,20 +292,32 @@ extension MultiPeerManager: MCSessionDelegate {
             
             DispatchQueue.main.async {
                 switch message {
-                case .buttonPressed(let playerID):
-                    self.receivedMessages.append("\(playerID) pressionou o botão!")
-                    self.addPlayerMessage(playerID: playerID, message: "Pressionou o botão")
-                    print("\(playerID) pressed")
+                case .buttonPressed(let playerID, let playerName):
+                    self.playerIDToName[playerID] = playerName
+                    self.receivedMessages.append("\(playerName) pressionou o botão!")
+                    self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Pressionou o botão")
+                    print("\(playerName) pressed")
                     
-                case .buttonReleased(let playerID):
-                    self.receivedMessages.append("\(playerID) soltou o botão")
-                    self.addPlayerMessage(playerID: playerID, message: "Soltou o botão")
-                    print("\(playerID) released")
+                case .buttonReleased(let playerID, let playerName):
+                    self.playerIDToName[playerID] = playerName
+                    self.receivedMessages.append("\(playerName) soltou o botão")
+                    self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Soltou o botão")
+                    print("\(playerName) released")
                     
-                case .playerConnected(let playerID):
-                    self.receivedMessages.append("Player \(playerID) entrou no jogo!")
-                    self.addPlayerMessage(playerID: playerID, message: "Conectado!")
-                    print("\(playerID) joined")
+                case .playerConnected(let playerID, let playerName):
+                    self.playerIDToName[playerID] = playerName
+                    
+                    // Encontrar qual peer enviou essa mensagem e mapear seu displayName
+                    if let matchingPeer = self.connectedPeers.first(where: { $0.displayName == playerName }) {
+                        self.playerIDToPeerDisplayName[playerID] = matchingPeer.displayName
+                        print("🔗 Mapeamento criado: UUID '\(playerID)' → displayName '\(matchingPeer.displayName)'")
+                    } else {
+                        print("⚠️ AVISO: Peer '\(playerName)' não encontrado em connectedPeers!")
+                    }
+                    
+                    self.receivedMessages.append("Player \(playerName) entrou no jogo!")
+                    self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Conectado!")
+                    print("📥 Player conectado - playerID: '\(playerID)' - playerName: '\(playerName)'")
                     
                     // Atualizar número do jogador baseado em quantos já estão conectados
                     if !self.isHosting {
@@ -259,28 +327,44 @@ extension MultiPeerManager: MCSessionDelegate {
                         self.updateAllPlayersReady()
                     }
                     
-                case .playerReady(let playerID, let isReady):
-                    print("\(playerID) ready: \(isReady)")
+                case .playerReady(let playerID, let playerName, let isReady):
+                    self.playerIDToName[playerID] = playerName
+                    print("\(playerName) ready: \(isReady)")
                     if isReady {
                         self.readyPlayers.insert(playerID)
-                        self.addPlayerMessage(playerID: playerID, message: "Pronto!")
+                        self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Pronto!")
                     } else {
                         self.readyPlayers.remove(playerID)
-                        self.addPlayerMessage(playerID: playerID, message: "Não pronto")
+                        self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Não pronto")
                     }
                     self.updateAllPlayersReady()
                     
                 case .startGame:
                     print("Game started")
                     
-                case .playerClick(let playerID):
-                    self.addPlayerMessage(playerID: playerID, message: "Clique")
-                    print("\(playerID) clicked")
+                case .playerClick(let playerID, let playerName):
+                    self.playerIDToName[playerID] = playerName
+                    self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Clique")
+                    print("\(playerName) clicked")
                     
-                case .playerMove(let playerID, let direction):
-                    self.receivedMessages.append("\(playerID) - \(direction)")
-                    self.addPlayerMessage(playerID: playerID, message: direction)
-                    print("\(playerID) moved \(direction)")
+                case .playerMove(let playerID, let playerName, let direction):
+                    self.playerIDToName[playerID] = playerName
+                    
+                    // Garantir que o mapeamento existe (caso a mensagem playerConnected tenha sido perdida)
+                    if self.playerIDToPeerDisplayName[playerID] == nil {
+                        if let matchingPeer = self.connectedPeers.first(where: { $0.displayName == playerName }) {
+                            self.playerIDToPeerDisplayName[playerID] = matchingPeer.displayName
+                            print("🔗 Mapeamento tardio criado: UUID '\(playerID)' → displayName '\(matchingPeer.displayName)'")
+                        }
+                    }
+                    
+                    print("📥 Recebeu movimento")
+                    print("   playerID (UUID): '\(playerID)'")
+                    print("   playerName: '\(playerName)'")
+                    print("   direction: '\(direction)'")
+                    self.receivedMessages.append("\(playerName) - \(direction)")
+                    self.addPlayerMessage(playerID: playerID, playerName: playerName, message: direction)
+                    print("\(playerName) moved \(direction)")
                     
                 case .updateTotalPlayers(let count):
                     self.totalPlayers = count

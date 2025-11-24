@@ -12,6 +12,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Este app precisa acessar a rede local para conectar à Apple TV e funcionar como controle do jogo.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Este app usa o giroscópio para detectar movimentos do iPhone e controlar o jogo.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_rhythm-game._tcp</string>

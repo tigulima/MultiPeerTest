@@ -23,6 +23,7 @@ struct PhoneContentView: View {
         switch currentScreen {
         case .start:
             StartScreen(onEnter: {
+                print("🔵 Iniciando busca por Apple TV...")
                 currentScreen = .lobby
                 multiPeer.startBrowsing()
             })

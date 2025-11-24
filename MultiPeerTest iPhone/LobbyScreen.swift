@@ -42,6 +42,7 @@ struct LobbyScreen: View {
         .onAppear {
             isReady = false
             multiPeer.resetLobby()
+            print("🔵 Lobby carregado - Conectado: \(multiPeer.isConnected), Buscando: \(multiPeer.isSearching)")
         }
     }
     

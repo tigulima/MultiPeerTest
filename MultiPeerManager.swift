@@ -31,6 +31,7 @@ class MultiPeerManager: NSObject, ObservableObject {
     
     @Published var connectedPeers: [MCPeerID] = []
     @Published var receivedMessages: [String] = []
+    @Published var playerMessages: [String: [String]] = [:] // Mensagens por jogador
     @Published var isHosting = false
     @Published var isConnected = false
     @Published var isSearching = false
@@ -56,6 +57,9 @@ class MultiPeerManager: NSObject, ObservableObject {
             securityIdentity: nil,
             encryptionPreference: .none // Para menor latência
         )
+        
+        // Configurar playerID com o nome do dispositivo
+        self.playerID = UIDevice.current.name
         
         super.init()
         
@@ -166,6 +170,18 @@ class MultiPeerManager: NSObject, ObservableObject {
         allPlayersReady = false
     }
     
+    // Adicionar mensagem ao log do jogador específico
+    private func addPlayerMessage(playerID: String, message: String) {
+        if playerMessages[playerID] == nil {
+            playerMessages[playerID] = []
+        }
+        playerMessages[playerID]?.append(message)
+        // Manter apenas as últimas 20 mensagens por jogador
+        if let count = playerMessages[playerID]?.count, count > 20 {
+            playerMessages[playerID]?.removeFirst()
+        }
+    }
+    
     // MARK: - Disconnect
     
     func disconnect() {
@@ -222,14 +238,17 @@ extension MultiPeerManager: MCSessionDelegate {
                 switch message {
                 case .buttonPressed(let playerID):
                     self.receivedMessages.append("\(playerID) pressionou o botão!")
+                    self.addPlayerMessage(playerID: playerID, message: "Pressionou o botão")
                     print("\(playerID) pressed")
                     
                 case .buttonReleased(let playerID):
                     self.receivedMessages.append("\(playerID) soltou o botão")
+                    self.addPlayerMessage(playerID: playerID, message: "Soltou o botão")
                     print("\(playerID) released")
                     
                 case .playerConnected(let playerID):
                     self.receivedMessages.append("Player \(playerID) entrou no jogo!")
+                    self.addPlayerMessage(playerID: playerID, message: "Conectado!")
                     print("\(playerID) joined")
                     
                     // Atualizar número do jogador baseado em quantos já estão conectados
@@ -244,8 +263,10 @@ extension MultiPeerManager: MCSessionDelegate {
                     print("\(playerID) ready: \(isReady)")
                     if isReady {
                         self.readyPlayers.insert(playerID)
+                        self.addPlayerMessage(playerID: playerID, message: "Pronto!")
                     } else {
                         self.readyPlayers.remove(playerID)
+                        self.addPlayerMessage(playerID: playerID, message: "Não pronto")
                     }
                     self.updateAllPlayersReady()
                     
@@ -253,10 +274,12 @@ extension MultiPeerManager: MCSessionDelegate {
                     print("Game started")
                     
                 case .playerClick(let playerID):
+                    self.addPlayerMessage(playerID: playerID, message: "Clique")
                     print("\(playerID) clicked")
                     
                 case .playerMove(let playerID, let direction):
                     self.receivedMessages.append("\(playerID) - \(direction)")
+                    self.addPlayerMessage(playerID: playerID, message: direction)
                     print("\(playerID) moved \(direction)")
                     
                 case .updateTotalPlayers(let count):

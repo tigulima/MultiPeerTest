@@ -35,8 +35,18 @@ struct GameScreen: View {
         VStack(spacing: 40) {
             Spacer()
             
-            Text("Tempo: \(timeRemaining)s")
-                .font(.title)
+            HStack {
+                Text("Player \(multiPeer.myPlayerNumber)")
+                    .font(.headline)
+                    .foregroundColor(.blue)
+                    .padding(.horizontal)
+                
+                Spacer()
+                
+                Text("Tempo: \(timeRemaining)s")
+                    .font(.title)
+            }
+            .padding(.horizontal)
             
             // Calibration Status
             if !isCalibrated {
@@ -92,13 +102,13 @@ struct GameScreen: View {
     
     private func getColorForDirection(_ direction: String) -> Color {
         switch direction {
-        case "cima":
+        case "up":
             return .green
-        case "baixo":
+        case "down":
             return .red
-        case "esquerda":
+        case "left":
             return .blue
-        case "direita":
+        case "right":
             return .orange
         default:
             return .gray
@@ -196,13 +206,13 @@ struct GameScreen: View {
         let direction: String
         switch newZone {
         case .left:
-            direction = "esquerda"
+            direction = "left"
         case .right:
-            direction = "direita"
+            direction = "right"
         case .up:
-            direction = "cima"
+            direction = "up"
         case .down:
-            direction = "baixo"
+            direction = "down"
         case .center:
             direction = ""
         }

@@ -20,6 +20,7 @@ enum GameMessage: Codable {
     case updateTotalPlayers(count: Int)
     case updateReadyPlayers(players: [String])
     case playerMove(playerID: String, playerName: String, direction: String)
+    case assignPlayerNumber(playerID: String, playerNumber: Int)
 }
 
 class MultiPeerManager: NSObject, ObservableObject {
@@ -52,6 +53,12 @@ class MultiPeerManager: NSObject, ObservableObject {
     // Mapeamento de playerID (UUID) para peer displayName (para Apple TV)
     // Isso garante que sempre usamos a chave correta
     private var playerIDToPeerDisplayName: [String: String] = [:]
+    
+    // Mapeamento de playerID (UUID) para número do jogador
+    private var playerIDToNumber: [String: Int] = [:]
+    
+    // Contador de jogadores (apenas para host/TV)
+    private var nextPlayerNumber = 1
     
     // MARK: - Initialization
     
@@ -98,8 +105,13 @@ class MultiPeerManager: NSObject, ObservableObject {
         advertiser?.delegate = self
         advertiser?.startAdvertisingPeer()
         
+        // Reset contador de jogadores
+        nextPlayerNumber = 1
+        playerIDToNumber.removeAll()
+        playerIDToPeerDisplayName.removeAll()
+        
         isHosting = true
-        print("Apple TV começou a anunciar")
+        print("🍎 Apple TV começou a anunciar (contador reset)")
     }
     
     func stopHosting() {
@@ -188,6 +200,17 @@ class MultiPeerManager: NSObject, ObservableObject {
     func resetLobby() {
         readyPlayers.removeAll()
         allPlayersReady = false
+    }
+    
+    // Obter o número do jogador baseado no displayName do peer (para Apple TV)
+    func getPlayerNumber(for peerDisplayName: String) -> Int? {
+        // Encontrar o playerID correspondente ao displayName
+        for (playerID, displayName) in playerIDToPeerDisplayName {
+            if displayName == peerDisplayName {
+                return playerIDToNumber[playerID]
+            }
+        }
+        return nil
     }
     
     // Adicionar mensagem ao log do jogador específico
@@ -315,6 +338,22 @@ extension MultiPeerManager: MCSessionDelegate {
                         print("⚠️ AVISO: Peer '\(playerName)' não encontrado em connectedPeers!")
                     }
                     
+                    // Se for host (Apple TV), atribuir número ao jogador e enviar de volta
+                    if self.isHosting {
+                        let playerNumber = self.nextPlayerNumber
+                        self.playerIDToNumber[playerID] = playerNumber
+                        self.nextPlayerNumber += 1
+                        
+                        print("🎮 Atribuindo Player \(playerNumber) para '\(playerName)'")
+                        print("   UUID: \(playerID)")
+                        print("   displayName: \(self.playerIDToPeerDisplayName[playerID] ?? "N/A")")
+                        self.sendMessage(.assignPlayerNumber(playerID: playerID, playerNumber: playerNumber))
+                        
+                        print("📊 Mapeamento completo:")
+                        print("   UUID → displayName: \(self.playerIDToPeerDisplayName)")
+                        print("   UUID → Number: \(self.playerIDToNumber)")
+                    }
+                    
                     self.receivedMessages.append("Player \(playerName) entrou no jogo!")
                     self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Conectado!")
                     print("📥 Player conectado - playerID: '\(playerID)' - playerName: '\(playerName)'")
@@ -373,6 +412,13 @@ extension MultiPeerManager: MCSessionDelegate {
                 case .updateReadyPlayers(let players):
                     self.readyPlayers = Set(players)
                     self.updateAllPlayersReady()
+                    
+                case .assignPlayerNumber(let playerID, let playerNumber):
+                    // Verificar se é para este jogador
+                    if playerID == self.playerID {
+                        self.myPlayerNumber = playerNumber
+                        print("🎯 Recebi meu número de jogador: \(playerNumber)")
+                    }
                 }
             }
         } catch {

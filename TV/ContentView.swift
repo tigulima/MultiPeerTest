@@ -70,16 +70,24 @@ struct ContentView: View {
                         
                         VStack(spacing: 15) {
                             // Nome do jogador
-                            Text(peer.displayName)
-                                .font(.title3)
-                                .bold()
-                                .foregroundColor(.white)
-                                .padding(.vertical, 10)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(playerColor.opacity(0.8))
-                                )
+                            let playerNumber = multiPeer.getPlayerNumber(for: peer.displayName) ?? (index + 1)
+                            
+                            VStack(spacing: 5) {
+                                Text("Player \(playerNumber)")
+                                    .font(.title2)
+                                    .bold()
+                                    .foregroundColor(.white)
+                                
+                                Text(peer.displayName)
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(playerColor.opacity(0.8))
+                            )
                             
                             // Logs do jogador
                             ScrollView {

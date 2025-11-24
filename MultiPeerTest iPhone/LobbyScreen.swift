@@ -12,10 +12,25 @@ struct LobbyScreen: View {
             
             // Status da conexão
             Text(connectionStatusText())
+                .font(.headline)
             
             // Número do jogador (somente quando conectado)
             if multiPeer.isConnected {
-                Text("Jogador \(multiPeer.myPlayerNumber)")
+                VStack(spacing: 10) {
+                    Text("Você é o")
+                        .font(.title3)
+                        .foregroundColor(.gray)
+                    
+                    Text("Player \(multiPeer.myPlayerNumber)")
+                        .font(.system(size: 60, weight: .bold))
+                        .foregroundColor(.blue)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color.blue.opacity(0.2))
+                        )
+                }
+                .padding()
             }
             
             Spacer()

@@ -302,20 +302,8 @@ extension MultiPeerManager: MCSessionDelegate {
         do {
             let message = try JSONDecoder().decode(GameMessage.self, from: data)
             
-            DispatchQueue.main.async {
+            DispatchQueue.main.async(execute: {
                 switch message {
-                case .buttonPressed(let playerID, let playerName):
-                    self.playerIDToName[playerID] = playerName
-                    self.receivedMessages.append("\(playerName) pressionou o botão!")
-                    self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Pressionou o botão")
-                    print("\(playerName) pressed")
-                    
-                case .buttonReleased(let playerID, let playerName):
-                    self.playerIDToName[playerID] = playerName
-                    self.receivedMessages.append("\(playerName) soltou o botão")
-                    self.addPlayerMessage(playerID: playerID, playerName: playerName, message: "Soltou o botão")
-                    print("\(playerName) released")
-                    
                 case .playerConnected(let playerID, let playerName):
                     self.playerIDToName[playerID] = playerName
                     
@@ -404,7 +392,7 @@ extension MultiPeerManager: MCSessionDelegate {
                         print("🎯 Recebi meu número de jogador: \(playerNumber)")
                     }
                 }
-            }
+            })
         } catch {
             print("Erro ao decodificar mensagem: \(error)")
         }

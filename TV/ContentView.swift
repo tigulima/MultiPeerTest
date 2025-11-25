@@ -73,7 +73,7 @@ struct ContentView: View {
                             let playerNumber = multiPeer.getPlayerNumber(for: peer.displayName) ?? (index + 1)
                             
                             VStack(spacing: 5) {
-                                Text("Player \(playerNumber)")
+                                Text("JOGADOR \(playerNumber)")
                                     .font(.title2)
                                     .bold()
                                     .foregroundColor(.white)

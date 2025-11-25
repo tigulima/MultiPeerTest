@@ -10,6 +10,7 @@ import MultipeerConnectivity
 
 enum GameState {
     case start
+    case selectTV
     case lobby
     case game
     case score
@@ -23,9 +24,16 @@ struct PhoneContentView: View {
         switch currentScreen {
         case .start:
             StartScreen(onEnter: {
-                currentScreen = .lobby
-                multiPeer.startBrowsing()
+                currentScreen = .selectTV
             })
+            
+        case .selectTV:
+            TVSelectionScreen(
+                multiPeer: multiPeer,
+                onTVSelected: {
+                    currentScreen = .lobby
+                }
+            )
             
         case .lobby:
             LobbyScreen(
@@ -47,7 +55,7 @@ struct PhoneContentView: View {
             ScoreScreen(
                 multiPeer: multiPeer,
                 onBackToLobby: {
-                    currentScreen = .lobby
+                    currentScreen = .selectTV
                 }
             )
         }
